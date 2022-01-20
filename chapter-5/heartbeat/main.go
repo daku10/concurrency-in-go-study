@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func DoWork(done <-chan interface{}, nums ...int) (<-chan interface{}, <-chan int) {
+func DoWork(done <-chan interface{}, pulseInterval time.Duration, nums ...int) (<-chan interface{}, <-chan int) {
 	heartbeat := make(chan interface{}, 1)
 	intStream := make(chan int)
 	go func() {
@@ -14,17 +14,22 @@ func DoWork(done <-chan interface{}, nums ...int) (<-chan interface{}, <-chan in
 		defer close(intStream)
 
 		time.Sleep(2 * time.Second)
+		pulse := time.Tick(pulseInterval)
 
+		numLoop:
 		for _, n := range nums {
-			select {
-			case heartbeat <- struct{}{}:
-			default:
-			}
-
-			select {
-			case <-done:
-				return
-			case intStream <- n:				
+			for {
+				select {
+				case <-done:
+					return
+				case <-pulse:
+					select {
+					case heartbeat <- struct{}{}:
+					default:
+					}
+				case intStream <- n:
+					continue numLoop
+				}
 			}
 		}
 	}()
