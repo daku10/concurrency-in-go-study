@@ -10,8 +10,9 @@ func main() {
 		heartbeat := make(chan interface{})
 		results := make(chan time.Time)
 		go func() {
-			defer close(heartbeat)
-			defer close(results)
+			// closeを忘れたgoroutine
+			// defer close(heartbeat)
+			// defer close(results)
 
 			pulse := time.Tick(pulseInterval)
 			workGen := time.Tick(2 * pulseInterval)
@@ -36,7 +37,7 @@ func main() {
 				}
 			}
 
-			for {
+			for i := 0; i < 2; i++ {
 				select {
 				case <-done:
 					return
@@ -58,18 +59,22 @@ func main() {
 	for {
 		select {
 		case _, ok := <-heartbeat:
-			if !ok {
+			if ok == false {
+				fmt.Println("heart down")
 				return
 			}
 			fmt.Println("pulse")
 		case r, ok := <-results:
 			if ok == false {
+				fmt.Println("results down")
 				return
 			}
 			fmt.Printf("results %v\n", r.Second())
 			// ここで宣言すると、caseの実行時に毎回timeoutのchannelが作成される、しかしheartbeatはtimeout/2でやってくるので、closeされるまでは毎回作り直されるので期待した動作をする
 		case <-time.After(timeout):
+			fmt.Println("worker goroutine is not healthy")
 			return
 		}
+		fmt.Println("finish for")
 	}
 }
